@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mach-symbols-upload"
-version = "20220514"
+version = "20220515"
 description = "Upload debug symbols for Mozilla applications on NixOS channels to symbols.mozilla.org"
 authors = ["Martin Weinelt <hexa@darmstadt.ccc.de>"]
 license = "MIT"
@@ -17,6 +17,9 @@ black = "^22.3.0"
 mypy = "^0.950"
 isort = "^5.10.1"
 types-appdirs = "^1.4.2"
+
+[tool.poetry.scripts]
+mach-symbols-upload = 'mach_symbols_upload.__main__:main'
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
