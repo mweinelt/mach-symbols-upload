@@ -1,4 +1,4 @@
-# Firefox Symbols Upload
+# mach-symbols-upload
 
 Uploads crashreport symbols created through Mozilla's Mach buildsystem
 to symbols.mozilla.org.
