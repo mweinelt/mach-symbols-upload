@@ -142,12 +142,16 @@ async def main(auth_token: str):
         for channel in CHANNELS:
             version = await get_channel_version(session, channel)
             if not channel_advanced(channel, version):
-                logger.msg("Channel not advanced", name=channel, version=channel)
+                logger.msg(
+                    "Channel not advanced",
+                    channel=channel,
+                    version=version,
+                )
                 continue
 
             logger.msg(
                 "Channel advanced",
-                name=channel,
+                channel=channel,
                 version=version,
             )
 
@@ -158,9 +162,9 @@ async def main(auth_token: str):
                 narinfo = await get_narinfo(session, package["hash"])
 
                 logger.msg(
-                    "Package",
+                    "Package found",
                     channel=channel,
-                    name=package["name"],
+                    package=package["name"],
                     hash=package["hash"],
                     store_path=narinfo["StorePath"],
                 )
@@ -173,18 +177,26 @@ async def main(auth_token: str):
                 # find symbols file
                 path = Path(narinfo["StorePath"])
                 files = list(path.glob("*.crashreporter-symbols.zip"))
-                logger.msg("Crashreport Symbols", path=path, files=files)
+                assert len(files) == 1
+                file = files.pop()
 
                 # upload
-                if files:
-                    file = files.pop()
-                    await session.post(
-                        url="https://symbols.mozilla.org/upload/",
-                        data={file.name: open(file.as_posix(), "rb")},
-                        headers={
-                            "Auth-token": auth_token,
-                        },
-                    )
+                logger.msg(
+                    "Uploading symbols",
+                    channel=channel,
+                    package=package["name"],
+                    hash=package["hash"],
+                    file=file.name,
+                )
+
+                await session.post(
+                    url="https://symbols.mozilla.org/upload/",
+                    data={file.name: open(file.as_posix(), "rb")},
+                    headers={
+                        "Auth-token": auth_token,
+                    },
+                )
+
     save_state()
 
 
