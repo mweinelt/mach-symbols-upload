@@ -144,7 +144,6 @@ def package_already_uploaded(package: Dict) -> bool:
     uploaded = package["hash"] in STATE["last_package_hashes"]
 
     if not uploaded:
-        print("not uploaded, appending")
         STATE["last_package_hashes"].append(package["hash"])
 
     return uploaded
