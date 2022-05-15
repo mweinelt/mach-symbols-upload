@@ -52,10 +52,22 @@ def load_state() -> None:
         with open(STATE_PATH, "r") as fd:
             STATE = json.load(fd)
     except FileNotFoundError:
-        STATE = {"version": 1, "last_seen": {}}
+        STATE = {
+            "version": 1,
+            "last_channel_version": {},
+            "last_package_hashes": [],
+        }
+
+
+def trim_package_hashes() -> None:
+    # Only keep a limited number of package hashes around
+    keep_count = len(CHANNELS) * len(PACKAGES)
+    STATE["last_package_hashes"] = STATE["last_package_hashes"][keep_count*(-1):]
 
 
 def save_state() -> None:
+    trim_package_hashes()
+
     try:
         os.makedirs(STATE_DIR)
     except FileExistsError:
@@ -78,14 +90,14 @@ def channel_advanced(channel, version_now) -> bool:
         load_state()
 
     try:
-        version_seen = STATE["last_seen"][channel]
+        version_seen = STATE["last_channel_version"][channel]
     except KeyError:
         version_seen = 0
 
     changed = version_seen != version_now
 
     if changed:
-        STATE["last_seen"][channel] = version_now
+        STATE["last_channel_version"][channel] = version_now
 
     return changed
 
@@ -126,6 +138,18 @@ async def get_narinfo(session, _hash: str) -> Dict[str, Any]:
         return parse_narinfo(narinfo)
 
 
+def package_already_uploaded(package: Dict) -> bool:
+    global STATE
+
+    uploaded = package["hash"] in STATE["last_package_hashes"]
+
+    if not uploaded:
+        print("not uploaded, appending")
+        STATE["last_package_hashes"].append(package["hash"])
+
+    return uploaded
+
+
 def coroutine(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -160,6 +184,16 @@ async def main(auth_token: str):
             for package in find_packages(store_paths):
                 # get narinfo to find store path for hash
                 narinfo = await get_narinfo(session, package["hash"])
+
+                if package_already_uploaded(package):
+                    logger.msg(
+                        "Package skipped",
+                        channel=channel,
+                        package=package["name"],
+                        hash=package["hash"],
+                        store_path=narinfo["StorePath"],
+                    )
+                    continue
 
                 logger.msg(
                     "Package found",
