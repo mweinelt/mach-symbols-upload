@@ -11,6 +11,7 @@ from typing import Any, Dict, Iterable, List
 from urllib.parse import urljoin
 
 import aiohttp
+import aiohttp.client_exceptions
 import click
 import structlog
 from appdirs import user_data_dir
@@ -79,7 +80,9 @@ def save_state() -> None:
 
 async def get_channel_version(session: aiohttp.ClientSession, channel: str) -> str:
     response = await session.head(
-        urljoin(CHANNEL_BASE, f"/{channel}"), allow_redirects=True
+        urljoin(CHANNEL_BASE, f"/{channel}"),
+        allow_redirects=True,
+        raise_for_status=True,
     )
 
     return response.url.path.split("/")[-1]
@@ -163,7 +166,17 @@ def coroutine(f):
 async def main(auth_token: str):
     async with aiohttp.ClientSession() as session:
         for channel in CHANNELS:
-            version = await get_channel_version(session, channel)
+            try:
+                version = await get_channel_version(session, channel)
+            except aiohttp.client_exceptions.ClientResponseError as ex:
+                logger.exception(
+                    "Error requesting channel version",
+                    channel=channel,
+                    error=str(ex),
+                    exc_info=False,
+                )
+                continue
+
             if not channel_advanced(channel, version):
                 logger.msg(
                     "Channel not advanced",
