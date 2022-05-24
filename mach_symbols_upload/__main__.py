@@ -31,13 +31,23 @@ PACKAGE_PATTERN = re.compile(
 )
 
 # Latest NixOS Release version
-RELEASE_VERSION = "21.11"
+SUPPORTED_RELEASES = ["21.11", "22.05"]
 
 CHANNELS = [
     "nixpkgs-unstable",
     "nixos-unstable",
-    f"nixos-{RELEASE_VERSION}",
 ]
+CHANNELS.extend(
+    [
+        channel
+        for release in SUPPORTED_RELEASES
+        for channel in [
+            f"nixos-{release}",
+            f"nixos-{release}-aarch64",
+        ]
+    ]
+)
+
 CHANNEL_BASE = "https://channels.nixos.org"
 
 CACHE_BASE = "https://cache.nixos.org"
