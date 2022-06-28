@@ -73,7 +73,7 @@ def load_state() -> None:
 def trim_package_hashes() -> None:
     # Only keep a limited number of package hashes around
     keep_count = len(CHANNELS) * len(PACKAGES)
-    STATE["last_package_hashes"] = STATE["last_package_hashes"][keep_count*(-1):]
+    STATE["last_package_hashes"] = STATE["last_package_hashes"][keep_count * (-1) :]
 
 
 def save_state() -> None:
