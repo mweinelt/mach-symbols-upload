@@ -145,7 +145,9 @@ def parse_narinfo(narinfo: str) -> Dict[str, Any]:
 
 
 async def get_narinfo(session, _hash: str) -> Dict[str, Any]:
-    async with session.get(urljoin(CACHE_BASE, f"/{_hash}.narinfo")) as response:
+    async with session.get(
+        urljoin(CACHE_BASE, f"/{_hash}.narinfo"), raise_for_status=True
+    ) as response:
         narinfo = await response.text()
 
         return parse_narinfo(narinfo)
@@ -205,7 +207,17 @@ async def main(auth_token: str):
 
             for package in find_packages(store_paths):
                 # get narinfo to find store path for hash
-                narinfo = await get_narinfo(session, package["hash"])
+                try:
+                    narinfo = await get_narinfo(session, package["hash"])
+                except aiohttp.client_exceptions.ClientResponseError as ex:
+                    logger.exception(
+                        "Error downloading narinfo file",
+                        channel=channel,
+                        version=version,
+                        package=package["name"],
+                        hash=package["hash"],
+                    )
+                    continue
 
                 if package_already_uploaded(package):
                     logger.msg(
