@@ -265,7 +265,7 @@ async def main(auth_token: str):
                     },
                 )
 
-    save_state()
+                save_state()
 
 
 if __name__ == "__main__":
