@@ -10,10 +10,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List
 from urllib.parse import urljoin
 
-import aiohttp
 import aiohttp.client_exceptions
 import click
 import structlog
+from aiohttp_retry import ExponentialRetry, RetryClient
+from aiohttp_retry.types import ClientType
 from appdirs import user_data_dir
 
 logger = structlog.getLogger()
@@ -88,7 +89,7 @@ def save_state() -> None:
         json.dump(STATE, fd)
 
 
-async def get_channel_version(session: aiohttp.ClientSession, channel: str) -> str:
+async def get_channel_version(session: ClientType, channel: str) -> str:
     response = await session.head(
         urljoin(CHANNEL_BASE, f"/{channel}"),
         allow_redirects=True,
@@ -115,7 +116,7 @@ def channel_advanced(channel, version_now) -> bool:
     return changed
 
 
-async def get_store_paths(session: aiohttp.ClientSession, channel: str) -> List[str]:
+async def get_store_paths(session: ClientType, channel: str) -> List[str]:
     async with session.get(
         urljoin(CHANNEL_BASE, f"/{channel}/store-paths.xz")
     ) as response:
@@ -176,7 +177,8 @@ def coroutine(f):
 @click.option("--auth-token", envvar="AUTH_TOKEN", required=True)
 @coroutine
 async def main(auth_token: str):
-    async with aiohttp.ClientSession() as session:
+    retry_options = ExponentialRetry(attempts=5)
+    async with RetryClient(retry_options=retry_options) as session:
         for channel in CHANNELS:
             try:
                 version = await get_channel_version(session, channel)
