@@ -218,6 +218,7 @@ async def main(auth_token: str):
                         version=version,
                         package=package["name"],
                         hash=package["hash"],
+                        error=str(ex),
                     )
                     continue
 
