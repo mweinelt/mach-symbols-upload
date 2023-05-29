@@ -44,7 +44,6 @@ CHANNELS.extend(
         for release in SUPPORTED_RELEASES
         for channel in [
             f"nixos-{release}",
-            f"nixos-{release}-aarch64",
         ]
     ]
 )
