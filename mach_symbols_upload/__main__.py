@@ -32,7 +32,10 @@ PACKAGE_PATTERN = re.compile(
 )
 
 # Latest NixOS Release version
-SUPPORTED_RELEASES = ["22.11", "23.05"]
+SUPPORTED_RELEASES = [
+    "23.05",
+    "23.11"
+]
 
 CHANNELS = [
     "nixpkgs-unstable",
