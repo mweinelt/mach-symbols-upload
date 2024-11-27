@@ -34,6 +34,7 @@ PACKAGE_PATTERN = re.compile(
 # Latest NixOS Release version
 SUPPORTED_RELEASES = [
     "24.05",
+    "24.11",
 ]
 
 CHANNELS = [
