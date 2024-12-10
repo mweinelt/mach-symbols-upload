@@ -4,6 +4,7 @@ import os
 import os.path
 import re
 import subprocess
+import sys
 from functools import wraps
 from lzma import LZMADecompressor
 from pathlib import Path
@@ -262,7 +263,7 @@ async def main(auth_token: str):
                     file=file.name,
                 )
 
-                await session.post(
+                response = await session.post(
                     url="https://symbols.mozilla.org/upload/",
                     data={file.name: open(file.as_posix(), "rb")},
                     headers={
@@ -270,8 +271,20 @@ async def main(auth_token: str):
                     },
                 )
 
-                save_state()
-
+                try:
+                    assert response.status == 200
+                    save_state()
+                except AssertionError:
+                    body = await response.json()
+                    logger.error(
+                        "Error uploading symbols output",
+                        channel=channel,
+                        version=version,
+                        package=package["name"],
+                        hash=package["hash"],
+                        error=body.get("error"),
+                    )
+                    sys.exit(1)
 
 if __name__ == "__main__":
     asyncio.run(main())
