@@ -272,7 +272,7 @@ async def main(auth_token: str):
                 )
 
                 try:
-                    assert response.status == 200
+                    assert response.status == 201  # created
                     save_state()
                 except AssertionError:
                     body = await response.json()
@@ -285,6 +285,7 @@ async def main(auth_token: str):
                         error=body.get("error"),
                     )
                     sys.exit(1)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
