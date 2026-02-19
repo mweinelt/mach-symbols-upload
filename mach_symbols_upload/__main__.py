@@ -246,7 +246,7 @@ async def main(auth_token: str):
 
                 # use nix to download the store path into the local nix store
                 subprocess.run(
-                    ["nix", "copy", "--from", CACHE_BASE, narinfo["StorePath"]]
+                    ["nix-store", "--realise", narinfo["StorePath"]]
                 )
 
                 # find symbols file
