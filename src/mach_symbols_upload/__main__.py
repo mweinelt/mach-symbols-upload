@@ -31,29 +31,7 @@ PACKAGE_PATTERN = re.compile(
     rf"(?P<hash>[a-z0-9]{{32}})-(?P<name>{'|'.join(PACKAGES)})-(?P<version>[0-9.]+(?:esr)?)-{PACKAGE_OUTPUT}"
 )
 
-# Latest NixOS Release version
-SUPPORTED_RELEASES = [
-    "25.05",
-    "25.11",
-]
-
-CHANNELS = [
-    "nixpkgs-unstable",
-    "nixos-unstable",
-]
-CHANNELS.extend(
-    [
-        channel
-        for release in SUPPORTED_RELEASES
-        for channel in [
-            f"nixos-{release}",
-            f"nixpkgs-{release}-darwin",
-        ]
-    ]
-)
-
 CHANNEL_BASE = "https://channels.nixos.org"
-
 CACHE_BASE = "https://cache.nixos.org"
 
 STATE = {}
@@ -62,6 +40,29 @@ STATE_PATH = os.path.join(STATE_DIR, "state.json")
 
 WAIT_SHORT = wait_exponential(min=4, max=16)
 WAIT_LONG = wait_exponential(min=4, max=64)
+
+
+@retry(wait=WAIT_SHORT)
+async def get_nixpkgs_channels(session: aiohttp.ClientSession) -> List[str]:
+    response = await session.get(
+        "https://prometheus.nixos.org/api/v1/query?query=channel_revision"
+    )
+
+    if response.status != 200:
+        raise
+
+    document = await response.json()
+    if document["status"] != "success":
+        raise
+
+    releases = [
+        item["metric"]["channel"]
+        for item in document["data"]["result"]
+        if item["metric"].get("status") != "unmaintained"
+        and not item["metric"]["channel"].endswith("-small")
+    ]
+
+    return releases
 
 
 def load_state() -> None:
@@ -77,9 +78,8 @@ def load_state() -> None:
         }
 
 
-def trim_package_hashes() -> None:
+def trim_package_hashes(keep_count: int = 64) -> None:
     # Only keep a limited number of package hashes around
-    keep_count = len(CHANNELS) * len(PACKAGES) * 10
     STATE["last_package_hashes"] = STATE["last_package_hashes"][keep_count * (-1) :]
 
 
@@ -200,7 +200,12 @@ def coroutine(f):
 @coroutine
 async def main(auth_token: str):
     async with aiohttp.ClientSession() as session:
-        for channel in CHANNELS:
+        channels = await get_nixpkgs_channels(session)
+        logger.msg(
+            "Discovered channels",
+            channels=channels,
+        )
+        for channel in channels:
             try:
                 version = await get_channel_version(session, channel)
             except aiohttp.ClientError as exc:
