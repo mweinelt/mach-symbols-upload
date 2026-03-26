@@ -1,6 +1,6 @@
 [project]
 name = "mach-symbols-upload"
-version = "20220515"
+version = "20251130.0"
 description = "Upload debug symbols for Mozilla applications on NixOS channels to symbols.mozilla.org"
 authors = [{ name = "Martin Weinelt", email = "hexa@darmstadt.ccc.de" }]
 requires-python = ">=3.13,<4"
