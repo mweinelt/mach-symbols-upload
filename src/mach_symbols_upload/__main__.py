@@ -60,6 +60,9 @@ STATE = {}
 STATE_DIR = user_data_dir("mach-symbols-upload")
 STATE_PATH = os.path.join(STATE_DIR, "state.json")
 
+WAIT_SHORT = wait_exponential(min=4, max=16)
+WAIT_LONG = wait_exponential(min=4, max=64)
+
 
 def load_state() -> None:
     global STATE
@@ -92,6 +95,7 @@ def save_state() -> None:
         json.dump(STATE, fd)
 
 
+@retry(wait=WAIT_SHORT)
 async def get_channel_version(session: aiohttp.ClientSession, channel: str) -> str:
     response = await session.head(
         urljoin(CHANNEL_BASE, f"/{channel}"),
@@ -119,6 +123,7 @@ def channel_advanced(channel, version_now) -> bool:
     return changed
 
 
+@retry(wait=WAIT_SHORT)
 async def get_store_paths(session: aiohttp.ClientSession, channel: str) -> List[str]:
     async with session.get(
         urljoin(CHANNEL_BASE, f"/{channel}/store-paths.xz")
@@ -148,6 +153,7 @@ def parse_narinfo(narinfo: str) -> Dict[str, Any]:
     return result
 
 
+@retry(wait=WAIT_SHORT)
 async def get_narinfo(session, _hash: str) -> Dict[str, Any]:
     async with session.get(
         urljoin(CACHE_BASE, f"/{_hash}.narinfo"), raise_for_status=True
@@ -168,7 +174,7 @@ def package_already_uploaded(package: Dict) -> bool:
     return uploaded
 
 
-@retry(wait=wait_exponential(min=4, max=60))
+@retry(wait=WAIT_LONG)
 async def upload(
     *, file: Path, session: aiohttp.ClientSession, auth_token: str
 ) -> aiohttp.ClientResponse:
