@@ -1,1 +1,13 @@
+# direnv
+.direnv
+
+# nix
+result*
+
+# pre-commit
+.pre-commit-config.yaml
+
+# python
 __pycache__
+*.pyc
+
