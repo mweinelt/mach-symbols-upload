@@ -11,12 +11,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List
 from urllib.parse import urljoin
 
-import aiohttp.client_exceptions
+import aiohttp
 import click
 import structlog
-from aiohttp_retry import ExponentialRetry, RetryClient
-from aiohttp_retry.types import ClientType
 from appdirs import user_data_dir
+from tenacity import retry, wait_exponential
 
 logger = structlog.getLogger()
 
@@ -93,7 +92,7 @@ def save_state() -> None:
         json.dump(STATE, fd)
 
 
-async def get_channel_version(session: ClientType, channel: str) -> str:
+async def get_channel_version(session: aiohttp.ClientSession, channel: str) -> str:
     response = await session.head(
         urljoin(CHANNEL_BASE, f"/{channel}"),
         allow_redirects=True,
@@ -120,7 +119,7 @@ def channel_advanced(channel, version_now) -> bool:
     return changed
 
 
-async def get_store_paths(session: ClientType, channel: str) -> List[str]:
+async def get_store_paths(session: aiohttp.ClientSession, channel: str) -> List[str]:
     async with session.get(
         urljoin(CHANNEL_BASE, f"/{channel}/store-paths.xz")
     ) as response:
@@ -169,6 +168,19 @@ def package_already_uploaded(package: Dict) -> bool:
     return uploaded
 
 
+@retry(wait=wait_exponential(min=4, max=60))
+async def upload(
+    *, file: Path, session: aiohttp.ClientSession, auth_token: str
+) -> aiohttp.ClientResponse:
+    return await session.post(
+        url="https://symbols.mozilla.org/upload/",
+        data={file.name: open(file.as_posix(), "rb")},
+        headers={
+            "Auth-token": auth_token,
+        },
+    )
+
+
 def coroutine(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -181,16 +193,15 @@ def coroutine(f):
 @click.option("--auth-token", envvar="AUTH_TOKEN", required=True)
 @coroutine
 async def main(auth_token: str):
-    retry_options = ExponentialRetry(attempts=5)
-    async with RetryClient(retry_options=retry_options) as session:
+    async with aiohttp.ClientSession() as session:
         for channel in CHANNELS:
             try:
                 version = await get_channel_version(session, channel)
-            except aiohttp.client_exceptions.ClientResponseError as ex:
+            except aiohttp.ClientError as exc:
                 logger.exception(
                     "Error requesting channel version",
                     channel=channel,
-                    error=str(ex),
+                    error=str(exc),
                     exc_info=False,
                 )
                 continue
@@ -215,14 +226,14 @@ async def main(auth_token: str):
                 # get narinfo to find store path for hash
                 try:
                     narinfo = await get_narinfo(session, package["hash"])
-                except aiohttp.client_exceptions.ClientResponseError as ex:
+                except aiohttp.ClientError as exc:
                     logger.exception(
                         "Error downloading narinfo file",
                         channel=channel,
                         version=version,
                         package=package["name"],
                         hash=package["hash"],
-                        error=str(ex),
+                        error=str(exc),
                     )
                     continue
 
@@ -262,12 +273,10 @@ async def main(auth_token: str):
                     file=file.name,
                 )
 
-                response = await session.post(
-                    url="https://symbols.mozilla.org/upload/",
-                    data={file.name: open(file.as_posix(), "rb")},
-                    headers={
-                        "Auth-token": auth_token,
-                    },
+                response = await upload(
+                    session=session,
+                    file=file,
+                    auth_token=auth_token,
                 )
 
                 try:
