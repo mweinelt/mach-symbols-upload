@@ -1,27 +1,31 @@
-[tool.poetry]
+[project]
 name = "mach-symbols-upload"
 version = "20220515"
 description = "Upload debug symbols for Mozilla applications on NixOS channels to symbols.mozilla.org"
-authors = ["Martin Weinelt <hexa@darmstadt.ccc.de>"]
+authors = [{ name = "Martin Weinelt", email = "hexa@darmstadt.ccc.de" }]
+requires-python = ">=3.13,<4"
 license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "aiohttp>=3.8.1,<4",
+    "aiohttp-retry>=2.8.3,<3",
+    "appdirs>=1.4.4,<2",
+    "click>=8.1.3,<9",
+    "structlog>=21.5.0,<22",
+]
 
-[tool.poetry.dependencies]
-python = "^3.9"
-aiohttp = "^3.8.1"
-structlog = "^21.5.0"
-click = "^8.1.3"
-appdirs = "^1.4.4"
-aiohttp-retry = "^2.8.3"
+[project.scripts]
+mach-symbols-upload = "mach_symbols_upload.__main__:main"
 
-[tool.poetry.dev-dependencies]
-black = "^22.3.0"
-mypy = "^0.950"
-isort = "^5.10.1"
-types-appdirs = "^1.4.2"
-
-[tool.poetry.scripts]
-mach-symbols-upload = 'mach_symbols_upload.__main__:main'
+[dependency-groups]
+dev = [
+    "types-appdirs>=1.4.2,<2",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.10.12,<0.11.0"]
+build-backend = "uv_build"
