@@ -261,7 +261,14 @@ async def main(auth_token: str):
                 # find symbols file
                 path = Path(narinfo["StorePath"])
                 files = list(path.glob("*.crashreporter-symbols.zip"))
-                assert len(files) == 1
+                if len(files) != 1:
+                    logger.error(
+                        f"Found {len(files)} crashreporter zipfiles.",
+                        channel=channel,
+                        package=package["name"],
+                        store_path=narinfo["StorePath"],
+                    )
+                    continue
                 file = files.pop()
 
                 # upload
@@ -279,10 +286,7 @@ async def main(auth_token: str):
                     auth_token=auth_token,
                 )
 
-                try:
-                    assert response.status == 201  # created
-                    save_state()
-                except AssertionError:
+                if response.status != 201:  # created
                     body = await response.json()
                     logger.error(
                         "Error uploading symbols output",
@@ -293,6 +297,15 @@ async def main(auth_token: str):
                         error=body.get("error"),
                     )
                     sys.exit(1)
+
+                logger.msg(
+                    "Upload complete",
+                    channel=channel,
+                    package=package["name"],
+                    hash=package["hash"],
+                    file=file.name,
+                )
+                save_state()
 
 
 if __name__ == "__main__":
