@@ -218,7 +218,7 @@ async def main(auth_token: str):
                 continue
 
             if not channel_advanced(channel, version):
-                logger.msg(
+                logger.debug(
                     "Channel not advanced",
                     channel=channel,
                     version=version,
